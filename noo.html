@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>WIM Online — NOO Baru</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="header-row">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <h1>NOO Baru</h1>
+      <span style="width:36px;"></span>
+    </div>
+    <div class="subtitle">WIM Online — New Outlet Opening</div>
+  </header>
+
+  <div class="main-content">
+    <div class="alert alert-info" id="infoAlert">Isi data toko baru. Field wajib ditandai *</div>
+    <div class="alert alert-success" id="successAlert" style="display:none;"></div>
+    <div class="alert alert-danger" id="errorAlert" style="display:none;"></div>
+
+    <div class="card">
+      <div class="form-section-title">Informasi Toko</div>
+
+      <div class="form-group">
+        <label class="form-label">Nama Toko *</label>
+        <input class="form-input" id="namaToko" placeholder="Contoh: TOKO MAJU JAYA">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nama Pemilik *</label>
+        <input class="form-input" id="namaPemilik" placeholder="Nama lengkap pemilik">
+      </div>
+      <div class="form-group">
+        <label class="form-label">No. Handphone *</label>
+        <input class="form-input" id="noHp" type="tel" placeholder="6281xxxxxxxxx">
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Channel</label>
+          <select class="form-select" id="channel">
+            <option value="GT">GT (General Trade)</option>
+            <option value="MT">MT (Modern Trade)</option>
+            <option value="Horeka">Horeka</option>
+            <option value="Institutional">Institutional</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kategori</label>
+          <select class="form-select" id="kategori">
+            <option value="Retail Kecil">Retail Kecil</option>
+            <option value="Retail Besar">Retail Besar</option>
+            <option value="Grosir">Grosir</option>
+            <option value="Agen">Agen</option>
+            <option value="Semi Grosir">Semi Grosir</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-section-title">Alamat</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Provinsi</label>
+          <select class="form-select" id="provinsi">
+            <option value="DKI Jakarta">DKI Jakarta</option>
+            <option value="Jawa Barat">Jawa Barat</option>
+            <option value="Banten">Banten</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kota *</label>
+          <input class="form-input" id="kota" placeholder="Jakarta Selatan">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Kecamatan</label>
+          <input class="form-input" id="kecamatan" placeholder="Kecamatan">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Kelurahan</label>
+          <input class="form-input" id="kelurahan" placeholder="Kelurahan">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Alamat Lengkap *</label>
+        <textarea class="form-input" id="alamat" placeholder="Jl. ..."></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Kode Pos</label>
+        <input class="form-input" id="kodePos" type="number" placeholder="12345">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="form-section-title">Lokasi GPS</div>
+      <button class="btn btn-primary btn-sm" onclick="ambilGPS()">📍 Ambil dari GPS</button>
+      <div style="height:8px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Latitude</label>
+          <input class="form-input" id="lat" readonly placeholder="-6.2088">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Longitude</label>
+          <input class="form-input" id="lng" readonly placeholder="106.8456">
+        </div>
+      </div>
+      <div id="gpsStatus" style="font-size:12px;color:var(--gray-400);"></div>
+    </div>
+
+    <div class="card">
+      <div class="form-section-title">Informasi Tambahan</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">Jenis Kendaraan</label>
+          <select class="form-select" id="jenisKendaraan">
+            <option value="">Pilih...</option>
+            <option value="Motor">Motor</option>
+            <option value="Pickup">Pickup</option>
+            <option value="Mobil Box">Mobil Box</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label class="form-label">NIK</label>
+          <input class="form-input" id="nik" type="number" placeholder="16 digit">
+        </div>
+        <div class="form-group">
+          <label class="form-label">NPWP</label>
+          <input class="form-input" id="npwp" placeholder="XX.XXX.XXX.X-XXX.XXX">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nama NPWP</label>
+        <input class="form-input" id="namaNpwp" placeholder="Sama dengan nama pemilik">
+      </div>
+    </div>
+
+    <button class="btn btn-success btn-lg btn-block" onclick="submitNOO()">💾 Simpan Toko Baru</button>
+    <div style="height:20px;"></div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="dashboard.html" ><span class="nav-icon">🏠</span>Beranda</a>
+    <a href="absensi.html" ><span class="nav-icon">⏰</span>Absensi</a>
+    <a href="visit-card.html" ><span class="nav-icon">📋</span>Kunjungan</a>
+    <a href="noo.html" class="active"><span class="nav-icon">➕</span>NOO</a>
+    <a href="report.html" ><span class="nav-icon">📊</span>Laporan</a>
+  </nav>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+function ambilGPS() {
+  const statusEl = document.getElementById('gpsStatus');
+  statusEl.textContent = 'Mendapatkan lokasi...';
+  if (!navigator.geolocation) {
+    statusEl.textContent = 'GPS tidak tersedia di browser ini';
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      document.getElementById('lat').value = pos.coords.latitude.toFixed(6);
+      document.getElementById('lng').value = pos.coords.longitude.toFixed(6);
+      statusEl.textContent = `Lokasi: ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+    },
+    (err) => {
+      statusEl.textContent = `Gagal: ${err.message}`;
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+}
+
+async function submitNOO() {
+  const namaToko = document.getElementById('namaToko').value.trim();
+  const namaPemilik = document.getElementById('namaPemilik').value.trim();
+  const noHp = document.getElementById('noHp').value.trim();
+  const kota = document.getElementById('kota').value.trim();
+  const alamat = document.getElementById('alamat').value.trim();
+  const lat = document.getElementById('lat').value;
+  const lng = document.getElementById('lng').value;
+
+  if (!namaToko || !namaPemilik || !noHp || !kota || !alamat) {
+    document.getElementById('errorAlert').textContent = 'Isi field wajib (Nama Toko, Pemilik, No HP, Kota, Alamat)';
+    document.getElementById('errorAlert').style.display = 'block';
+    return;
+  }
+
+  const btn = document.querySelector('button[onclick="submitNOO()"]');
+  btn.disabled = true;
+  btn.textContent = 'Menyimpan...';
+  document.getElementById('errorAlert').style.display = 'none';
+  document.getElementById('successAlert').style.display = 'none';
+
+  try {
+    // Create Place
+    const placeData = {
+      name: namaToko.toUpperCase(),
+      type: 'store',
+      street1: alamat,
+      city: kota,
+      province: document.getElementById('provinsi').value,
+      district: document.getElementById('kecamatan').value,
+      country: 'ID',
+      phone: noHp,
+      postal_code: document.getElementById('kodePos').value,
+    };
+    if (lat && lng) {
+      placeData.location = { latitude: parseFloat(lat), longitude: parseFloat(lng) };
+    }
+
+    const place = await WIM_API.createPlace(placeData);
+
+    // Create Contact for store owner
+    const contact = await WIM_API.createContact({
+      place_uuid: place.uuid || place.data?.uuid,
+      name: namaPemilik,
+      type: 'customer',
+      phone: noHp,
+      meta: {
+        channel: document.getElementById('channel').value,
+        kategori: document.getElementById('kategori').value,
+        jenis_kendaraan: document.getElementById('jenisKendaraan').value,
+        nik: document.getElementById('nik').value,
+        npwp: document.getElementById('npwp').value,
+        nama_npwp: document.getElementById('namaNpwp').value,
+      }
+    });
+
+    document.getElementById('successAlert').textContent = `✅ Toko "${namaToko}" berhasil ditambahkan!`;
+    document.getElementById('successAlert').style.display = 'block';
+    btn.textContent = '💾 Simpan Toko Baru';
+    btn.disabled = false;
+
+    // Reset form
+    document.getElementById('namaToko').value = '';
+    document.getElementById('namaPemilik').value = '';
+    document.getElementById('noHp').value = '';
+    document.getElementById('alamat').value = '';
+    document.getElementById('lat').value = '';
+    document.getElementById('lng').value = '';
+
+  } catch(e) {
+    document.getElementById('errorAlert').textContent = `Gagal: ${e.message}`;
+    document.getElementById('errorAlert').style.display = 'block';
+    btn.textContent = '💾 Simpan Toko Baru';
+    btn.disabled = false;
+  }
+}
+
+// Session check
+document.addEventListener('DOMContentLoaded', async () => {
+  await Session.checkOrRedirect();
+});
+</script>
+</body>
+</html>

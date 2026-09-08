@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>WIM Online — Laporan</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="header-row">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <h1>Laporan</h1>
+      <span style="width:36px;"></span>
+    </div>
+    <div class="subtitle">WIM Online — Data & Analisis</div>
+  </header>
+
+  <div class="main-content">
+    <!-- Stats Overview -->
+    <div class="stats-grid" id="reportStats">
+      <div class="stat-card"><div class="stat-value" id="statKunjungan">—</div><div class="stat-label">Total Kunjungan</div></div>
+      <div class="stat-card"><div class="stat-value" id="statPesanan">—</div><div class="stat-label">Total Pesanan</div></div>
+      <div class="stat-card"><div class="stat-value" id="statToko">—</div><div class="stat-label">Toko Dikunjungi</div></div>
+      <div class="stat-card"><div class="stat-value" id="statRata">—</div><div class="stat-label">Rata-rata/Hari</div></div>
+    </div>
+
+    <!-- Period Selector -->
+    <div class="segment">
+      <button class="active" onclick="selectPeriod('harian',this)">📅 Harian</button>
+      <button onclick="selectPeriod('mingguan',this)">📆 Mingguan</button>
+      <button onclick="selectPeriod('bulanan',this)">📊 Bulanan</button>
+    </div>
+
+    <!-- Export Actions -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px;">📥 Export Data</div>
+      <div style="display:grid;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="exportPlaces()">🏪 Export Toko (JSON)</button>
+        <button class="btn btn-outline btn-sm" onclick="exportOrders()">📋 Export Pesanan (JSON)</button>
+        <button class="btn btn-outline btn-sm" onclick="exportGeofence()">📍 Export Geofence Events</button>
+        <button class="btn btn-primary btn-sm" onclick="exportCSV()">📊 Export Laporan Lengkap (CSV)</button>
+      </div>
+    </div>
+
+    <!-- Recent Reports -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Riwayat Laporan</div>
+      </div>
+      <div id="reportHistory">
+        <div class="empty-state"><p>Belum ada laporan yang di-generate</p></div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="dashboard.html" ><span class="nav-icon">🏠</span>Beranda</a>
+    <a href="absensi.html" ><span class="nav-icon">⏰</span>Absensi</a>
+    <a href="visit-card.html" ><span class="nav-icon">📋</span>Kunjungan</a>
+    <a href="noo.html" ><span class="nav-icon">➕</span>NOO</a>
+    <a href="report.html" class="active"><span class="nav-icon">📊</span>Laporan</a>
+  </nav>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+let currentPeriod = 'harian';
+let reportHistory = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  Session.checkOrRedirect();
+  loadReports();
+});
+
+async function loadReports() {
+  try {
+    const results = await Promise.allSettled([
+      WIM_API.getPlaces(),
+      WIM_API.getOrders(),
+      WIM_API.getGeofenceEvents().catch(() => []),
+    ]);
+
+    const places = results[0].status === 'fulfilled' ? results[0].value : [];
+    const orders = results[1].status === 'fulfilled' ? results[1].value : [];
+    const events = results[2].status === 'fulfilled' ? results[2].value : [];
+
+    const stores = places.filter(p => p.type === 'store' || !p.type);
+    const kunjungan = Array.isArray(events) ? events.length : 0;
+    const pesanan = orders.length || 0;
+    const tokoDikunjungi = kunjungan > 0 ? Math.min(stores.length, Math.ceil(kunjungan / 2)) : 0;
+    const rataRata = kunjungan > 0 ? Math.round(kunjungan / 30) : 0;
+
+    document.getElementById('statKunjungan').textContent = kunjungan;
+    document.getElementById('statPesanan').textContent = pesanan;
+    document.getElementById('statToko').textContent = tokoDikunjungi;
+    document.getElementById('statRata').textContent = rataRata;
+  } catch(e) {
+    console.error('Report load error:', e);
+  }
+}
+
+function selectPeriod(period, btn) {
+  currentPeriod = period;
+  document.querySelectorAll('.segment button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+async function exportPlaces() {
+  const data = await WIM_API.getPlaces();
+  downloadJSON(data, `wim-toko-${new Date().toISOString().slice(0,10)}.json`);
+  addHistory('🏪 Export Toko', 'JSON');
+}
+
+async function exportOrders() {
+  const data = await WIM_API.getOrders();
+  downloadJSON(data, `wim-pesanan-${new Date().toISOString().slice(0,10)}.json`);
+  addHistory('📋 Export Pesanan', 'JSON');
+}
+
+async function exportGeofence() {
+  const data = await WIM_API.getGeofenceEvents().catch(() => []);
+  downloadJSON(data, `wim-geofence-${new Date().toISOString().slice(0,10)}.json`);
+  addHistory('📍 Export Geofence', 'JSON');
+}
+
+async function exportCSV() {
+  const [places, orders] = await Promise.all([
+    WIM_API.getPlaces(),
+    WIM_API.getOrders(),
+  ]);
+  const stores = places.filter(p => p.type === 'store' || !p.type);
+  let csv = 'Laporan WIM Fleetbase\n';
+  csv += `Tanggal: ${new Date().toLocaleDateString('id-ID')}\n\n`;
+  csv += `Total Toko: ${stores.length}\n`;
+  csv += `Total Pesanan: ${orders.length}\n\n`;
+  csv += '--- Daftar Toko ---\n';
+  csv += 'Nama,Alamat,Kota\n';
+  stores.forEach(s => { csv += `${s.name||''},${s.street1||''},${s.city||''}\n`; });
+  csv += '\n--- Daftar Pesanan ---\n';
+  csv += 'ID,Status,Tanggal\n';
+  (orders||[]).forEach(o => { csv += `${o.public_id||o.id},${o.status},${o.created_at||''}\n`; });
+  downloadCSV(csv, `wim-laporan-${new Date().toISOString().slice(0,10)}.csv`);
+  addHistory('📊 Laporan Lengkap', 'CSV');
+}
+
+function addHistory(name, format) {
+  const el = document.getElementById('reportHistory');
+  const time = new Date().toLocaleTimeString('id-ID');
+  const entry = { name, format, time };
+  reportHistory.unshift(entry);
+  if (reportHistory.length === 1) {
+    el.innerHTML = '';
+  }
+  el.innerHTML = reportHistory.slice(0,5).map(r =>
+    `<div class="store-item">
+      <div class="store-icon" style="background:var(--tosca);">📄</div>
+      <div class="store-info">
+        <div class="store-name">${r.name}</div>
+        <div class="store-address">${r.format} • ${r.time}</div>
+      </div>
+    </div>`
+  ).join('') + el.innerHTML;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>WIM Online — Kunjungan</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app-shell">
+  <header class="app-header">
+    <div class="header-row">
+      <button class="back-btn" onclick="history.back()">←</button>
+      <h1>WIM Online</h1>
+      <span style="width:36px;"></span>
+    </div>
+    <div class="subtitle">Kunjungan Sales — <span id="headerDate"></span></div>
+  </header>
+
+  <div class="main-content">
+    <!-- Filter: In-Rute / Luar-Rute -->
+    <div class="segment">
+      <button class="active" data-filter="all" onclick="filterStores('all',this)">Semua</button>
+      <button data-filter="in" onclick="filterStores('in',this)">Dalam Rute</button>
+      <button data-filter="out" onclick="filterStores('out',this)">Luar Rute</button>
+    </div>
+
+    <!-- Store list -->
+    <div id="storeList"><div class="loading"><div class="spinner"></div></div></div>
+
+    <!-- Add Out-of-Route Store -->
+    <button class="btn btn-outline btn-block" onclick="openAddOutRouteStore()" style="margin:12px 0;">
+      ➕ Tambah Toko Luar Rute
+    </button>
+
+    <!-- Add Out-of-Route Store Modal -->
+    <div class="modal-overlay" id="addStoreModal" style="display:none;" onclick="if(event.target===this)closeAddStore()">
+      <div class="modal-content">
+        <div class="modal-title">Tambah Toko Luar Rute</div>
+        <div class="form-group">
+          <input class="form-input" id="addStoreSearch" placeholder="Cari nama toko..." oninput="filterAddStoreList()">
+        </div>
+        <div id="addStoreList" style="max-height:300px;overflow-y:auto;"></div>
+        <div style="height:8px;"></div>
+        <button class="btn btn-primary" id="btnAddSelected" onclick="confirmAddOutRouteStore()" disabled>
+          ✅ Tambahkan ke Daftar
+        </button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-outline" onclick="closeAddStore()">Batal</button>
+      </div>
+    </div>
+
+    <!-- Store Detail Modal -->
+    <div class="modal-overlay" id="storeModal" style="display:none;" onclick="if(event.target===this)closeModal()">
+      <div class="modal-content">
+        <div class="modal-title" id="modalStoreName">Toko</div>
+        <div class="store-address" id="modalStoreAddr" style="margin-bottom:12px;font-size:13px;color:var(--gray-400);"></div>
+
+        <!-- Timer -->
+        <div class="timer-display">
+          <div class="timer-number" id="visitTimer">3:00</div>
+          <div class="timer-label">Waktu minimum kunjungan</div>
+        </div>
+
+        <!-- Action buttons -->
+        <button class="btn btn-primary btn-block" id="btnCheckin" onclick="handleCheckin()">📍 Check-in di Toko</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-outline btn-block" onclick="handleStock()">📦 Input Stok Toko</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-outline btn-block" onclick="handlePhoto()">📸 Ambil Foto</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-success btn-block" onclick="handleOrder()">🛒 Buat Pesanan</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-outline btn-block btn-sm" onclick="handleNoOrder()">❌ Tidak Ada Pesanan (alasan)</button>
+        <div style="height:12px;"></div>
+        <button class="btn btn-success btn-lg btn-block" id="btnFinish" disabled onclick="handleFinish()">
+          ✅ Selesaikan Kunjungan
+        </button>
+      </div>
+    </div>
+
+    <!-- Camera Modal -->
+    <div class="modal-overlay" id="cameraModal" style="display:none;" onclick="if(event.target===this)closeCamera()">
+      <div class="modal-content">
+        <div class="modal-title">Ambil Foto Kunjungan</div>
+        
+        <!-- Selfie wajib -->
+        <div class="form-group">
+          <label class="form-label">Selfie (wajib — 1 foto) *</label>
+          <div class="photo-area" id="selfiePreview" onclick="takeSelfie()">
+            <div class="camera-icon">📷</div>
+            <div class="photo-label">Tap untuk selfie</div>
+          </div>
+          <div id="selfieStatus" style="font-size:12px;color:var(--gray-400);margin-top:4px;"></div>
+        </div>
+
+        <!-- Foto tambahan (opsional, bisa lebih dari 1) -->
+        <div class="form-group">
+          <label class="form-label">Foto Tambahan (opsional)</label>
+          <button class="btn btn-outline btn-sm" onclick="takeExtraPhoto()">📸 Ambil Foto Spanduk/Etalase</button>
+          <div id="extraPhotos" style="margin-top:8px;"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Keterangan Foto</label>
+          <input class="form-input" id="photoDesc" placeholder="Selfie / Spanduk / Etalase">
+        </div>
+        
+        <div class="alert alert-info" style="font-size:12px;">
+          Selfie wajib diambil. Foto tambahan bersifat opsional (bisa lebih dari 1).
+        </div>
+        
+        <button class="btn btn-primary" onclick="confirmPhotos()">✅ Selesai Ambil Foto</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-outline" onclick="closeCamera()">Tutup</button>
+      </div>
+    </div>
+
+    <!-- No Order Reason Modal -->
+    <div class="modal-overlay" id="noOrderModal" style="display:none;" onclick="if(event.target===this)closeNoOrder()">
+      <div class="modal-content">
+        <div class="modal-title">Alasan Tidak Ada Pesanan</div>
+        <div class="form-group">
+          <select class="form-select" id="noOrderReason" onchange="toggleLainnyaReason()">
+            <option value="">Pilih alasan...</option>
+            <option value="Stok masih penuh">Stok masih penuh</option>
+            <option value="Toko tutup">Toko tutup</option>
+            <option value="Pemilik tidak ada">Pemilik tidak ada</option>
+            <option value="Harga belum cocok">Harga belum cocok</option>
+            <option value="Menunggu promo">Menunggu promo</option>
+            <option value="Lainnya">Lainnya (tulis sendiri)</option>
+          </select>
+        </div>
+        <div class="form-group" id="lainnyaReasonGroup" style="display:none;">
+          <label class="form-label">Tulis alasan *</label>
+          <textarea class="form-input" id="lainnyaReason" placeholder="Ketik alasan tidak ada pesanan..."></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="submitNoOrder()">Kirim</button>
+        <div style="height:8px;"></div>
+        <button class="btn btn-outline" onclick="closeNoOrder()">Batal</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <a href="dashboard.html" ><span class="nav-icon">🏠</span>Beranda</a>
+    <a href="absensi.html" ><span class="nav-icon">⏰</span>Absensi</a>
+    <a href="visit-card.html" class="active"><span class="nav-icon">📋</span>Kunjungan</a>
+    <a href="noo.html" ><span class="nav-icon">➕</span>NOO</a>
+    <a href="report.html" ><span class="nav-icon">📊</span>Laporan</a>
+  </nav>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+let currentStore = null;
+let currentTimer = null;
+let checkinDone = false;
+let selfieTaken = false;
+let extraPhotoCount = 0;
+let photoTaken = false;  // selfie counts as photoTaken
+let allStores = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+  Session.checkOrRedirect();
+  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  WIM_API.getPlaces().then(places => {
+    addOutRouteAllPlaces = places;
+    allStores = places;
+    const stores = allStores.filter(s => s.type === 'store' || !s.type);
+    renderStores(stores);
+  }).catch(() => {
+    document.getElementById('storeList').innerHTML =
+      `<div class="alert alert-danger">Gagal memuat daftar toko</div>`;
+  });
+});
+
+async function loadStores() {
+  try {
+    allStores = await WIM_API.getPlaces();
+    const stores = allStores.filter(s => s.type === 'store' || !s.type);
+    renderStores(stores);
+  } catch(e) {
+    document.getElementById('storeList').innerHTML =
+      `<div class="alert alert-danger">Gagal memuat toko: ${e.message}</div>`;
+  }
+}
+
+function renderStores(stores) {
+  const el = document.getElementById('storeList');
+  if (stores.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>Tidak ada toko dalam daftar</p></div>`;
+    return;
+  }
+  el.innerHTML = stores.map(s => {
+    const initial = (s.name || 'T').charAt(0);
+    const city = s.city || s.street1 || '';
+    const inRoute = s.meta?.in_route !== false;
+    const badge = inRoute
+      ? '<span class="badge badge-success">Dalam Rute</span>'
+      : '<span class="badge badge-warning">Luar Rute</span>';
+    return `<div class="store-item" onclick="openStore('${s.id}','${s.name}','${city}','${s.latitude||''}','${s.longitude||''}')">
+      <div class="store-icon">${initial}</div>
+      <div class="store-info">
+        <div class="store-name">${s.name || 'Tanpa Nama'}</div>
+        <div class="store-address">${city}</div>
+        <div class="store-meta">${badge}</div>
+      </div>
+      <span style="color:var(--gray-300);font-size:18px;">›</span>
+    </div>`;
+  }).join('');
+}
+
+function filterStages(filter, btn) {
+  document.querySelectorAll('.segment button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const stores = allStores.filter(s => s.type === 'store' || !s.type);
+  if (filter === 'in') {
+    renderStores(stores.filter(s => s.meta?.in_route !== false));
+  } else if (filter === 'out') {
+    renderStores(stores.filter(s => s.meta?.in_route === false));
+  } else {
+    renderStores(stores);
+  }
+}
+
+function filterStores(filter, btn) {
+  document.querySelectorAll('.segment button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const stores = allStores.filter(s => s.type === 'store' || !s.type);
+  if (filter === 'in') renderStores(stores.filter(s => s.meta?.in_route !== false));
+  else if (filter === 'out') renderStores(stores.filter(s => s.meta?.in_route === false));
+  else renderStores(stores);
+}
+
+function openStore(id, name, city, lat, lng) {
+  currentStore = { id, name, city, lat, lng };
+  document.getElementById('modalStoreName').textContent = name;
+  document.getElementById('modalStoreAddr').textContent = city || 'Alamat tidak tersedia';
+  document.getElementById('visitTimer').textContent = '3:00';
+  document.getElementById('visitTimer').className = 'timer-number';
+  document.getElementById('btnFinish').disabled = true;
+  checkinDone = false;
+  photoTaken = false;
+
+  // Start timer
+  if (currentTimer) currentTimer.stop();
+  currentTimer = new VisitTimer(180, (remaining) => {
+    const el = document.getElementById('visitTimer');
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    el.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+  }, () => {
+    document.getElementById('visitTimer').textContent = 'Selesai ✅';
+    document.getElementById('visitTimer').className = 'timer-number timer-done';
+    if (checkinDone) {
+      document.getElementById('btnFinish').disabled = false;
+    }
+  });
+  currentTimer.start();
+
+  document.getElementById('storeModal').style.display = 'flex';
+  document.getElementById('btnCheckin').disabled = false;
+}
+
+function closeModal() {
+  document.getElementById('storeModal').style.display = 'none';
+  if (currentTimer) currentTimer.stop();
+}
+
+async function handleCheckin() {
+  if (!currentStore || !currentStore.lat || !currentStore.lng) {
+    alert('Lokasi toko tidak tersedia. Gunakan GPS.');
+    return;
+  }
+  try {
+    await WIM_API.trackDriver(parseFloat(currentStore.lat), parseFloat(currentStore.lng));
+    document.getElementById('btnCheckin').textContent = '✅ Check-in Berhasil';
+    document.getElementById('btnCheckin').className = 'btn btn-success btn-block';
+    document.getElementById('btnCheckin').disabled = true;
+    checkinDone = true;
+    if (currentTimer && currentTimer.isDone) {
+      document.getElementById('btnFinish').disabled = false;
+    }
+  } catch(e) {
+    alert(`Gagal check-in: ${e.message}`);
+  }
+}
+
+function handleStock() {
+  const qty = prompt('Stok SANQUA PET 220ML (karton):', '0');
+  if (qty !== null) {
+    alert(`Stok dicatat: ${qty} karton`);
+  }
+}
+
+function handlePhoto() {
+  selfieTaken = false;
+  extraPhotoCount = 0;
+  document.getElementById('selfiePreview').innerHTML = '<div class="camera-icon">📷</div><div class="photo-label">Tap untuk selfie</div>';
+  document.getElementById('selfieStatus').textContent = '';
+  document.getElementById('extraPhotos').innerHTML = '';
+  document.getElementById('cameraModal').style.display = 'flex';
+}
+
+async function takeSelfie() {
+  const file = await capturePhoto('user');
+  if (file) {
+    const preview = document.getElementById('selfiePreview');
+    const url = URL.createObjectURL(file);
+    preview.innerHTML = `<img src="${url}" alt="Selfie">`;
+    selfieTaken = true;
+    photoTaken = true;
+    document.getElementById('selfieStatus').textContent = '✅ Selfie berhasil';
+    document.getElementById('selfieStatus').style.color = 'var(--green)';
+  } else {
+    alert('Gagal mengakses kamera depan');
+  }
+}
+
+async function takeExtraPhoto() {
+  const file = await capturePhoto('environment');
+  if (file) {
+    extraPhotoCount++;
+    const container = document.getElementById('extraPhotos');
+    const url = URL.createObjectURL(file);
+    const div = document.createElement('div');
+    div.className = 'store-item';
+    div.innerHTML = `
+      <div style="width:48px;height:48px;border-radius:6px;overflow:hidden;flex-shrink:0;">
+        <img src="${url}" style="width:100%;height:100%;object-fit:cover;">
+      </div>
+      <div class="store-info">
+        <div class="store-name">Foto tambahan #${extraPhotoCount}</div>
+        <div class="store-address">Berhasil diambil</div>
+      </div>
+      <button class="btn btn-sm btn-danger" onclick="this.parentElement.remove()">🗑️</button>
+    `;
+    container.appendChild(div);
+  } else {
+    alert('Gagal mengakses kamera belakang');
+  }
+}
+
+function confirmPhotos() {
+  if (!selfieTaken) {
+    alert('Selfie wajib diambil! Ambil foto selfie terlebih dahulu.');
+    return;
+  }
+  const desc = document.getElementById('photoDesc').value.trim();
+  alert(`✅ Foto selesai! ${extraPhotoCount > 0 ? `${extraPhotoCount} foto tambahan. ` : ''}${desc ? 'Keterangan: '+desc : ''}`);
+  closeCamera();
+}
+
+function closeCamera() {
+  document.getElementById('cameraModal').style.display = 'none';
+}
+
+function handleOrder() {
+  if (!checkinDone) {
+    alert('Harap check-in terlebih dahulu!');
+    return;
+  }
+  closeModal();
+  window.location.href = 'order.html?store=' + currentStore.id;
+}
+
+function handleNoOrder() {
+  document.getElementById('noOrderReason').value = '';
+  document.getElementById('lainnyaReasonGroup').style.display = 'none';
+  document.getElementById('noOrderModal').style.display = 'flex';
+}
+
+function toggleLainnyaReason() {
+  const val = document.getElementById('noOrderReason').value;
+  document.getElementById('lainnyaReasonGroup').style.display = val === 'Lainnya' ? 'block' : 'none';
+}
+
+function closeNoOrder() {
+  document.getElementById('noOrderModal').style.display = 'none';
+}
+
+async function submitNoOrder() {
+  let reason = document.getElementById('noOrderReason').value;
+  if (reason === 'Lainnya') {
+    reason = document.getElementById('lainnyaReason').value.trim();
+    if (!reason) { alert('Tulis alasan terlebih dahulu'); return; }
+  }
+  if (!reason) { alert('Pilih alasan'); return; }
+  try {
+    const store = allStores.find(s => s.id === currentStore.id || s.name === currentStore.name);
+    const contact = store ? await WIM_API.getContacts().then(cs => cs.find(c => c.place_uuid === store.uuid)) : null;
+    await WIM_API.createOrder({
+      customer_uuid: contact?.uuid || store?.uuid,
+      customer_type: 'contact',
+      status: 'no-order',
+      type: 'delivery',
+      meta: { reason, payment_method: 'none' },
+      payload: { dropoff_uuid: store?.uuid, entities: [] }
+    });
+    closeNoOrder();
+    closeModal();
+    alert('Kunjungan tanpa pesanan dicatat.');
+    document.getElementById('btnFinish').disabled = false;
+  } catch(e) {
+    alert(`Gagal: ${e.message}`);
+  }
+}
+
+async function handleFinish() {
+  if (!checkinDone) { alert('Check-in dulu!'); return; }
+  if (!currentTimer?.isDone && currentTimer?.remaining > 0) {
+    alert('Tunggu timer selesai (' + currentTimer.formatted + ')');
+    return;
+  }
+  alert('✅ Kunjungan selesai!');
+  closeModal();
+}
+
+// ── Luar Rute: Tambah Toko ke Daftar Kunjungan
+let addOutRouteSelected = null;
+let addOutRouteAllPlaces = [];
+
+function openAddOutRouteStore() {
+  addOutRouteSelected = null;
+  document.getElementById('btnAddSelected').disabled = true;
+  document.getElementById('addStoreSearch').value = '';
+  document.getElementById('addStoreModal').style.display = 'flex';
+  populateAddStoreList();
+}
+
+function closeAddStore() {
+  document.getElementById('addStoreModal').style.display = 'none';
+}
+
+function populateAddStoreList(searchTerm) {
+  const existingIds = new Set(allStores.map(s => s.id));
+  // Filter out stores already in the list
+  let available = addOutRouteAllPlaces.filter(p => !existingIds.has(p.id));
+
+  if (searchTerm) {
+    const term = searchTerm.toLowerCase();
+    available = available.filter(p => (p.name || '').toLowerCase().includes(term) || (p.city || '').toLowerCase().includes(term));
+  }
+
+  const el = document.getElementById('addStoreList');
+  if (available.length === 0) {
+    el.innerHTML = `<div class="empty-state"><p>Tidak ada toko yang tersedia</p></div>`;
+    return;
+  }
+
+  el.innerHTML = available.map(p => {
+    const initial = (p.name || 'T').charAt(0);
+    return `<div class="store-item" onclick="selectAddStore('${p.id}','${p.name}','${p.city||''}')" data-store-id="${p.id}" style="cursor:pointer;">
+      <div class="store-icon">${initial}</div>
+      <div class="store-info">
+        <div class="store-name">${p.name || 'Tanpa Nama'}</div>
+        <div class="store-address">${p.city || ''}</div>
+      </div>
+      <div class="store-status" style="font-size:18px;">○</div>
+    </div>`;
+  }).join('');
+}
+
+function filterAddStoreList() {
+  const term = document.getElementById('addStoreSearch').value;
+  populateAddStoreList(term);
+}
+
+function selectAddStore(id, name, city) {
+  // Deselect previous
+  document.querySelectorAll('#addStoreList .store-item').forEach(el => {
+    el.style.background = '';
+    el.querySelector('.store-status').textContent = '○';
+  });
+
+  const el = document.querySelector(`[data-store-id="${id}"]`);
+  if (el) {
+    el.style.background = 'var(--blue-50)';
+    el.querySelector('.store-status').textContent = '●';
+  }
+
+  addOutRouteSelected = { id, name, city };
+  document.getElementById('btnAddSelected').disabled = false;
+}
+
+async function confirmAddOutRouteStore() {
+  if (!addOutRouteSelected) return;
+
+  // Find the store in the places data
+  const store = addOutRouteAllPlaces.find(p => p.id === addOutRouteSelected.id);
+  if (!store) { alert('Toko tidak ditemukan'); return; }
+
+  // Mark it as out-of-route
+  store.meta = store.meta || {};
+  store.meta.in_route = false;
+
+  // Add to the allStores list
+  allStores.push(store);
+
+  // Re-render with current filter
+  const activeFilter = document.querySelector('.segment button.active')?.dataset?.filter || 'all';
+  filterStores(activeFilter, document.querySelector(`[data-filter="${activeFilter}"]`));
+
+  WIM_LOGGER.info('Kunjungan', 'Toko luar rute ditambahkan', { store: store.name, id: store.id });
+  closeAddStore();
+  alert(`✅ Toko "${store.name}" ditambahkan ke daftar kunjungan (Luar Rute)`);
+  }
+}
+</script>
+</body>
+</html>

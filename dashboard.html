@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>WIM Online — Dashboard</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div class="app-shell">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-row">
+      <span></span>
+      <h1>Dashboard</h1>
+      <button class="back-btn" onclick="handleLogout()" title="Keluar">⏻</button>
+    </div>
+    <div class="subtitle">WIM Online — Dashboard</div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid">
+      <div class="stat-card"><div class="stat-value" id="statStores">—</div><div class="stat-label">Toko</div></div>
+      <div class="stat-card"><div class="stat-value" id="statOrders">—</div><div class="stat-label">Pesanan</div></div>
+      <div class="stat-card"><div class="stat-value" id="statRoutes">—</div><div class="stat-label">Rute</div></div>
+      <div class="stat-card"><div class="stat-value" id="statProducts">—</div><div class="stat-label">Produk</div></div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:12px;">Mulai Kerja</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn btn-primary btn-sm" onclick="location.href='visit-card.html'">📋 Kunjungan</button>
+        <button class="btn btn-success btn-sm" onclick="location.href='noo.html'">➕ NOO Baru</button>
+        <button class="btn btn-outline btn-sm" onclick="location.href='admin.html'">⚙ Admin</button>
+        <button class="btn btn-outline btn-sm" onclick="location.href='report.html'">📊 Laporan</button>
+      </div>
+    </div>
+
+    <!-- Today's Plan -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Rencana Kunjungan Hari Ini</div>
+          <div class="card-subtitle" id="todayDate">Memuat...</div>
+        </div>
+        <span class="badge badge-info" id="planCount">0 toko</span>
+      </div>
+      <div id="storeList">
+        <div class="loading"><div class="spinner"></div></div>
+      </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Aktivitas Terakhir</div>
+      </div>
+      <div id="activityList">
+        <div class="empty-state"><p>Belum ada aktivitas hari ini</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation -->
+  <nav class="bottom-nav">
+    <a href="dashboard.html" class="active"><span class="nav-icon">🏠</span>Beranda</a>
+    <a href="absensi.html" ><span class="nav-icon">⏰</span>Absensi</a>
+    <a href="visit-card.html" ><span class="nav-icon">📋</span>Kunjungan</a>
+    <a href="noo.html" ><span class="nav-icon">➕</span>NOO</a>
+    <a href="report.html" ><span class="nav-icon">📊</span>Laporan</a>
+  </nav>
+</div>
+
+<script src="js/config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+<script>
+// Restore session
+(function init() {
+  const driverId = sessionStorage.getItem('wim_driver_id') || '';
+  const userName = sessionStorage.getItem('wim_user_name') || 'User';
+
+  // Check server-side session
+  fetch('/api/auth/session')
+    .then(r => r.json())
+    .then(data => {
+      if (data.user) {
+        // Update from server
+        sessionStorage.setItem('wim_user_name', data.user.name || userName);
+        sessionStorage.setItem('wim_user_role', data.user.role || '');
+        const pid = data.user.driver_id || driverId;
+        sessionStorage.setItem('wim_driver_id', pid);
+        // Init API with just driver ID (API key injected server-side)
+        WIM_API.init({ driverId: pid });
+        document.getElementById('userName').textContent = data.user.name || userName;
+        loadDashboard();
+      } else {
+        window.location.href = 'index.html';
+      }
+    })
+    .catch(() => {
+      WIM_API.init({ driverId });
+      document.getElementById('userName').textContent = userName;
+      loadDashboard();
+    });
+})();
+
+async function loadDashboard() {
+  try {
+    const results = await Promise.allSettled([
+      WIM_API.getPlaces(),
+      WIM_API.getEntities(),
+      WIM_API.getOrders(),
+      WIM_API.getRoutes().catch(() => []),
+      WIM_API.getDrivers(),
+    ]);
+
+    const places = results[0].status === 'fulfilled' ? results[0].value : [];
+    const entities = results[1].status === 'fulfilled' ? results[1].value : [];
+    const orders = results[2].status === 'fulfilled' ? results[2].value : [];
+    const routes = results[3].status === 'fulfilled' ? results[3].value : [];
+    const drivers = results[4].status === 'fulfilled' ? results[4].value : [];
+
+    const stores = places.filter(p => p.type === 'store' || !p.type);
+    document.getElementById('statStores').textContent = stores.length || '0';
+    document.getElementById('statOrders').textContent = (orders.length) || '0';
+    document.getElementById('statRoutes').textContent = (routes.length) || '0';
+    document.getElementById('statProducts').textContent = (entities.length) || '0';
+
+    // Today's date
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('todayDate').textContent = dateStr;
+
+    // Store list
+    const storeList = document.getElementById('storeList');
+    if (stores.length === 0) {
+      storeList.innerHTML = `<div class="empty-state"><div class="empty-icon">📪</div><p>Belum ada toko terdaftar</p></div>`;
+      document.getElementById('planCount').textContent = '0 toko';
+    } else {
+      document.getElementById('planCount').textContent = `${stores.length} toko`;
+      storeList.innerHTML = stores.map(s => {
+        const status = s.status || 'active';
+        const badge = status === 'active'
+          ? '<span class="badge badge-success">Aktif</span>'
+          : '<span class="badge badge-gray">Nonaktif</span>';
+        const initial = (s.name || 'T').charAt(0);
+        const city = s.city || s.street1 || '';
+        return `<div class="store-item" onclick="location.href='visit-card.html?store=${s.id}'">
+          <div class="store-icon">${initial}</div>
+          <div class="store-info">
+            <div class="store-name">${s.name || 'Toko Tanpa Nama'}</div>
+            <div class="store-address">${city}</div>
+            <div class="store-meta">${badge}</div>
+          </div>
+          <span style="color:var(--gray-300);font-size:18px;">›</span>
+        </div>`;
+      }).join('');
+    }
+
+    // Activity
+    const activityEl = document.getElementById('activityList');
+    if (orders.length > 0) {
+      const recent = orders.slice(0, 3);
+      activityEl.innerHTML = recent.map(o => {
+        const date = o.created_at ? new Date(o.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '';
+        const badge = o.status === 'verified' ? 'badge-success' : o.status === 'pending' ? 'badge-warning' : 'badge-gray';
+        return `<div class="store-item">
+          <div class="store-icon" style="background:var(--green);">📋</div>
+          <div class="store-info">
+            <div class="store-name">Pesanan ${o.public_id || '#'+o.id}</div>
+            <div class="store-address">Status: <span class="badge ${badge}">${o.status}</span> • ${date}</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+  } catch (e) {
+    console.error('Dashboard load error:', e);
+    document.getElementById('storeList').innerHTML =
+      `<div class="alert alert-danger">Gagal memuat data: ${e.message}</div>`;
+  }
+}
+
+function handleLogout() {
+  if (confirm('Keluar dari aplikasi?')) {
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+  }
+}
+</script>
+</body>
+</html>
